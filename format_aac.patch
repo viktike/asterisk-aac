@@ -1,0 +1,107 @@
+commit 203f82af3af3af90e82f10550abc590eb2b0babd
+Author: Sperl Viktor <viktike32@gmail.com>
+Date:   Mon Apr 1 14:14:00 2024 +0200
+
+    format_aac: Advanced Audio Coding (mp4)
+    
+    MPEG4 Advanced Audio Coding implementation using two
+    external libraries: libfaac (encoder) and libfaad2
+    (decoder).
+    
+    Fixes: #692
+    
+    UserNote: 8khz, 16khz, 32khz and 48khz sampling rates are
+    available with the proper file extensions: aac, aac16, aac32
+    and aac48 suffixes.
+
+diff --git a/build_tools/menuselect-deps.in b/build_tools/menuselect-deps.in
+index 6594a922e..c3377e08d 100644
+--- a/build_tools/menuselect-deps.in
++++ b/build_tools/menuselect-deps.in
+@@ -26,6 +26,8 @@ JACK=@PBX_JACK@
+ JANSSON=@PBX_JANSSON@
+ URIPARSER=@PBX_URIPARSER@
+ KQUEUE=@PBX_KQUEUE@
++FAAC=@PBX_FAAC@
++FAAD=@PBX_FAAD@
+ LDAP=@PBX_LDAP@
+ LIBEDIT=@PBX_LIBEDIT@
+ LIBJWT=@PBX_LIBJWT@
+diff --git a/configure.ac b/configure.ac
+index 0e1a11eed..e864ec200 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -577,6 +577,8 @@ AST_EXT_LIB_SETUP([OGG], [OGG], [ogg])
+ AST_EXT_LIB_SETUP([OPENR2], [MFR2], [openr2])
+ AST_EXT_LIB_SETUP([OPUS], [Opus], [opus])
+ AST_EXT_LIB_SETUP([OPUSFILE], [Opusfile], [opusfile])
++AST_EXT_LIB_SETUP([FAAC], [Faac], [faac])
++AST_EXT_LIB_SETUP([FAAD], [Faad], [faad])
+ AST_EXT_LIB_SETUP([PGSQL], [PostgreSQL], [postgres])
+ AST_EXT_LIB_SETUP([BEANSTALK], [Beanstalk Job Queue], [beanstalk])
+ 
+@@ -2610,6 +2612,9 @@ AST_EXT_LIB_CHECK([SS7], [ss7], [ss7_set_isup_timer], [libss7.h])
+ 
+ AST_EXT_LIB_CHECK([OPENR2], [openr2], [openr2_chan_new], [openr2.h])
+ 
++AST_EXT_LIB_CHECK([FAAC], [faac], [faacEncOpen], [faac.h])
++AST_EXT_LIB_CHECK([FAAD], [faad], [NeAACDecOpen], [neaacdec.h])
++
+ AST_EXT_LIB_CHECK([OPUS], [opus], [opus_encoder_create], [opus/opus.h])
+ # opusfile.h includes <opus_multistream.h> so we need to make sure that
+ # either $OPUS_INCLUDE or /usr/include/opus is added to the search path.
+diff --git a/contrib/scripts/install_prereq b/contrib/scripts/install_prereq
+index 2927ec13c..0d4288cf4 100755
+--- a/contrib/scripts/install_prereq
++++ b/contrib/scripts/install_prereq
+@@ -28,7 +28,7 @@ PACKAGES_DEBIAN="$PACKAGES_DEBIAN libpq-dev unixodbc-dev libneon27-dev libgmime-
+ PACKAGES_DEBIAN="$PACKAGES_DEBIAN libmysqlclient-dev libbluetooth-dev libradcli-dev freetds-dev libjack-jackd2-dev bash libcap-dev"
+ PACKAGES_DEBIAN="$PACKAGES_DEBIAN libsnmp-dev libiksemel-dev libcorosync-common-dev libcpg-dev libcfg-dev libnewt-dev libpopt-dev libical-dev libspandsp-dev"
+ PACKAGES_DEBIAN="$PACKAGES_DEBIAN libresample1-dev libc-client2007e-dev binutils-dev libsrtp0-dev libsrtp2-dev libgsm1-dev doxygen graphviz zlib1g-dev libldap2-dev"
+-PACKAGES_DEBIAN="$PACKAGES_DEBIAN libcodec2-dev libfftw3-dev libsndfile1-dev libunbound-dev"
++PACKAGES_DEBIAN="$PACKAGES_DEBIAN libcodec2-dev libfftw3-dev libsndfile1-dev libunbound-dev libfaac-dev libfaad-dev"
+ # Asterisk: for the unpackaged below:
+ PACKAGES_DEBIAN="$PACKAGES_DEBIAN wget subversion"
+ # Asterisk: for ./configure --with-pjproject-bundled:
+@@ -44,7 +44,7 @@ PACKAGES_RH="$PACKAGES_RH postgresql-devel unixODBC-devel neon-devel gmime-devel
+ PACKAGES_RH="$PACKAGES_RH mysql-devel bluez-libs-devel radcli-devel freetds-devel jack-audio-connection-kit-devel bash libcap-devel"
+ PACKAGES_RH="$PACKAGES_RH net-snmp-devel iksemel-devel corosynclib-devel newt-devel popt-devel libical-devel spandsp-devel"
+ PACKAGES_RH="$PACKAGES_RH libresample-devel uw-imap-devel binutils-devel libsrtp-devel gsm-devel doxygen graphviz zlib-devel openldap-devel hoard"
+-PACKAGES_RH="$PACKAGES_RH codec2-devel fftw-devel libsndfile-devel unbound-devel"
++PACKAGES_RH="$PACKAGES_RH codec2-devel fftw-devel libsndfile-devel unbound-devel faac-devel faad2-devel"
+ # Asterisk: for the unpackaged below:
+ PACKAGES_RH="$PACKAGES_RH wget subversion"
+ # Asterisk: for ./configure --with-pjproject-bundled:
+diff --git a/include/asterisk/autoconfig.h.in b/include/asterisk/autoconfig.h.in
+index debf540c3..4873b669b 100644
+--- a/include/asterisk/autoconfig.h.in
++++ b/include/asterisk/autoconfig.h.in
+@@ -251,6 +251,12 @@
+ /* Define to 1 if you have the `expl' function. */
+ #undef HAVE_EXPL
+ 
++/* Define to 1 if you have the Faac library. */
++#undef HAVE_FAAC
++
++/* Define to 1 if you have the Faad library. */
++#undef HAVE_FAAD
++
+ /* Define to 1 if you have the <fcntl.h> header file. */
+ #undef HAVE_FCNTL_H
+ 
+diff --git a/makeopts.in b/makeopts.in
+index f7824f347..e8ec22f74 100644
+--- a/makeopts.in
++++ b/makeopts.in
+@@ -194,6 +194,12 @@ LIBJWT_CONFIGURE_OPTS=@LIBJWT_CONFIGURE_OPTS@
+ URIPARSER_INCLUDE=@URIPARSER_INCLUDE@
+ URIPARSER_LIB=@URIPARSER_LIB@
+ 
++FAAC_INCLUDE=@FAAC_INCLUDE@
++FAAC_LIB=@FAAC_LIB@
++
++FAAD_INCLUDE=@FAAD_INCLUDE@
++FAAD_LIB=@FAAD_LIB@
++
+ LDAP_INCLUDE=@LDAP_INCLUDE@
+ LDAP_LIB=@LDAP_LIB@
