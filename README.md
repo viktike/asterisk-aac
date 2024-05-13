@@ -12,7 +12,7 @@ sudo apt install libfaac-dev libfaad-dev
 #### Repository
 
 1. Add the https://rpmfusion.org/ repository to your system.
-1. Enable the non-free respotiory
+1. Enable the non-free repository
 
 #### Install packages
 
