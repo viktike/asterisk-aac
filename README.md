@@ -14,6 +14,10 @@ sudo apt install libfaac-dev libfaad-dev
 1. Add the https://rpmfusion.org/ repository to your system.
 1. Enable the non-free respotiory
 
+#### Install packages
+
+sudo dnf install faac-devel faad2-devel
+
 ## Install
 
 ### Patch asterisk sources
